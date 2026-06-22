@@ -1021,8 +1021,8 @@ html, body {
         Begin session →
       </button>
 
-      <p class="landing-note"> SESSION DURATION 10:00 minutes </p>
-      <p class="landing-note"> POWERED BY DARK MATTERS | Seemab Mehmood, Qimam Fellow 2025 </p>
+      <p class="landing-note"> SESSION DURATION 10:00 Minutes </p>
+      <p class="landing-note">POWERED BY DARK MATTERS | SEEMAB MEHMOOD, QIMAM FELLOW 2025 </p>
     </div>
   </div>
 
@@ -1438,6 +1438,7 @@ async function getPersonaOpener(persona) {
   showLoading('Preparing your mentor…');
 
   try {
+    // Change this:
     const resp = await callClaude(systemPrompt, [{ role: 'user', content: 'Begin the session.' }]);
     hideLoading();
     appendMessage('mentor', resp, null);
@@ -1519,7 +1520,8 @@ async function sendMessage() {
       .filter(m => m.role === 'user' || m.role === 'assistant')
       .map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }));
 
-    const response = await callClaude(systemPrompt, messages);
+    // Change this:
+    const response = await callGemini(systemPrompt, messages);
     typingEl.remove();
 
     const isRejection = detectRejection(response);
@@ -1784,7 +1786,8 @@ Session stats:
 Write a 3-sentence reflection. First sentence: what the student did well, specifically. Second sentence: the single most important thing to work on next session. Third sentence: one concrete question they could have asked that would have unlocked more depth. Be direct, not flattering. No bullet points.`;
 
   try {
-    const reflection = await callClaude(reflectionPrompt, [{ role: 'user', content: 'Generate the reflection.' }]);
+    // Change this:
+       const reflection = await callGemini(reflectionPrompt, [{ role: 'user', content: 'Generate the reflection.' }]);
     document.getElementById('reflection-text').textContent = reflection;
   } catch(e) {
     document.getElementById('reflection-text').textContent = 'Reflection unavailable. Review your question tags in the transcript below.';
@@ -1792,22 +1795,40 @@ Write a 3-sentence reflection. First sentence: what the student did well, specif
 }
 
 // ══════════════════════════════════════════════
-// API
+// UPDATED API: GEMINI INTEGRATION
 // ══════════════════════════════════════════════
-async function callClaude(system, messages) {
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
+async function callGemini(system, messages) {
+  // Replace YOUR_API_KEY with your actual Gemini API key
+  const API_KEY = 'YOUR_API_KEY';
+  const MODEL_NAME = 'gemini-1.5-flash'; // Or 'gemini-1.5-pro'
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
+
+  // Gemini uses a different message format (parts/role)
+  const contents = messages.map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }]
+  }));
+
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1000,
-      system,
-      messages,
+      system_instruction: { parts: [{ text: system }] },
+      contents: contents,
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 1000,
+      }
     })
   });
+
   const data = await response.json();
-  if (data.error) throw new Error(data.error.message);
-  return data.content.map(b => b.text || '').join('');
+  
+  if (data.error) {
+    throw new Error(data.error.message);
+  }
+
+  return data.candidates[0].content.parts[0].text;
 }
 
 // ══════════════════════════════════════════════
