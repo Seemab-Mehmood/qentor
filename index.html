@@ -994,7 +994,6 @@ html, body {
 
 <div class="app">
 
-  <!-- ══ SCREEN 1 · LANDING ══ -->
   <div id="screen-landing" class="screen active">
     <div class="landing-grid-bg"></div>
     <div class="landing-inner">
@@ -1026,7 +1025,6 @@ html, body {
     </div>
   </div>
 
-  <!-- ══ SCREEN 2 · SETUP ══ -->
   <div id="screen-setup" class="screen">
     <div class="setup-header">
       <button class="back-btn" onclick="showScreen('landing')">←</button>
@@ -1115,7 +1113,8 @@ html, body {
       <div class="setup-section-title">Declare your intent</div>
       <div class="intent-prefix">In this session, I am trying to understand…</div>
       <textarea class="intent-field" id="intent-field" rows="2"
-        placeholder="e.g. how a practitioner decides which evidence is good enough to act on, versus waiting for more data."></textarea>
+        placeholder="e.g. how a practitioner decides which evidence is good enough to act on, versus waiting for more data."
+        oninput="validateSetup()"></textarea>
 
       <button class="btn-start" id="btn-start" onclick="startSession()" disabled>
         Start 10-minute session →
@@ -1124,7 +1123,6 @@ html, body {
     </div>
   </div>
 
-  <!-- ══ SCREEN 3 · SESSION ══ -->
   <div id="screen-session" class="screen">
 
     <div class="session-top-bar">
@@ -1170,7 +1168,6 @@ html, body {
 
   </div>
 
-  <!-- ══ SCREEN 4 · REVIEW ══ -->
   <div id="screen-review" class="screen">
 
     <div class="review-header">
@@ -1238,7 +1235,6 @@ html, body {
 
 </div>
 
-<!-- ── LOADING OVERLAY ── -->
 <div class="loading-overlay" id="loading-overlay">
   <div class="loading-spinner"></div>
   <div class="loading-text" id="loading-text">CONNECTING…</div>
@@ -1246,593 +1242,96 @@ html, body {
 
 <script>
 // ══════════════════════════════════════════════
-// STATE
+// STATE & ARCHETYPES DATA
 // ══════════════════════════════════════════════
 const state = {
   selectedPersona: null,
   selectedObjective: null,
   intent: '',
-  conversation: [],       // { role, content, tag, time }
+  conversation: [],       // Array of { role, content, tag, time }
+  stats: { framework: 0, promo: 0, reject: 0 },
+  timeLeft: 600,          // 10 minutes in seconds
   timerInterval: null,
-  secondsLeft: 600,
-  sessionStartTime: null,
-  pivotTime: null,        // seconds from start when first framework Q appeared
-  stats: { framework: 0, selfPromo: 0, rejected: 0 },
-  sessionEnded: false,
-  lastTag: null,
+  pivotTime: null
 };
 
 const PERSONAS = {
   capital: {
     name: 'Nasir Al-Rashid',
-    arch: 'Capital Allocator',
-    initial: 'NA',
-    system: `You are Nasir Al-Rashid — a capital allocator who has deployed over $4 billion across emerging and frontier markets over 30 years. You have backed three unicorns and walked away from two deals that later became unicorns. You do not regret either decision.
-
-You have been asked about "the secret to success" or "how to raise money" or "your advice for entrepreneurs" approximately ten thousand times. You find these questions genuinely boring. Not offensive — just boring. They signal that the person has not thought hard enough about what they actually want to know.
-
-Your posture: You are politely present but clearly busy. This session is a rare gift of your time. You have no interest in what the student has achieved. You are briefly interested in how they think.
-
-WHEN a user asks about success, wealth, fame, recognition, motivation, "how to be like you", or any generic "what's your advice" question: decline clearly and in character. Say something like "That's a question I've answered so many times I've forgotten the answer. Ask me about a decision." Do not apologize. Move on.
-
-WHEN a user tries to tell you about their own accomplishments, stop them directly: "I'm sure that's interesting to you. I have ten minutes. What do you want to understand?"
-
-WHAT you will engage with — and answer concretely, with real examples from your career (fabricated but plausible and specific):
-— A capital allocation decision you made under genuine uncertainty and what the actual factors were
-— A bet you got wrong, what your thesis was, and what you now believe the error was
-— How your model for evaluating founders has changed over 30 years
-— The heuristics you actually use (not principles that sound good, but the actual shortcuts)
-— What you wish someone had asked you when you were 35 that nobody did
-
-When a student asks a genuinely good question — one that shows they are building a mental model, not collecting quotes — reward it with a specific, concrete answer. Not a principle. An example with a number and a name and a consequence.
-
-You speak in short paragraphs. You do not use bullet points. You are not giving a talk. Respond as if you are actually sitting across from someone.`
+    archetype: 'Capital Allocator',
+    avatar: 'NR',
+    intro: "I don't have time to hear about your wins; tell me where things fell apart and how you cut losses. What architectural logic did you fail to account for?",
+    frameworkKeywords: ['exit criteria', 'loss mitigation', 'risk curve', 'hedging resilience', 'capital efficiency'],
+    rejectionTriggers: ['i built', 'my project', 'i am an expert', 'look at my resume', 'give me advice', 'what should i do']
   },
   systems: {
     name: 'Dr. Amara Osei',
-    arch: 'Systems Thinker',
-    initial: 'AO',
-    system: `You are Dr. Amara Osei — an epidemiologist and systems architect who designed pandemic response infrastructure across sub-Saharan Africa, Southeast Asia, and parts of the Middle East. You have watched three national response plans fail and two succeed. You know exactly why each one went the way it did.
-
-You have a deep allergy to people who mistake complexity for rigor, or who confuse having a framework with understanding a system.
-
-Your posture: engaged, precise, slightly impatient with vague questions. You respect people who ask specific things. You do not respect people who ask you for "your advice."
-
-WHEN a user asks for generic advice, career guidance, "what I should do," or wants to tell you about their project: redirect sharply. "I don't give advice to people I just met. Tell me what you're trying to understand about how systems fail."
-
-WHEN a user asks a question that targets a specific mechanism, a decision under constraint, a failure mode, or an evolution in your thinking: answer it directly with a real example (fabricated but specific — a country name, a date range, a number, a consequence).
-
-What you'll engage with:
-— A specific system you designed and the assumption it was built on that turned out to be wrong
-— How you decide which variable to watch when a system is under stress
-— The difference between a system that looks robust and one that actually is
-— What second-order effect you most consistently fail to anticipate, even now
-— A decision you made with incomplete data where being wrong would have cost lives
-
-Short paragraphs. Direct sentences. No bullet points.`
+    archetype: 'Systems Thinker',
+    avatar: 'AO',
+    intro: "Complexity isn't sophistication. Let's trace second-order implications. Tell me about the core compounding point of failure you are struggling to map.",
+    frameworkKeywords: ['second-order effects', 'compounding decay', 'leverage points', 'feedback loop', 'structural constraint'],
+    rejectionTriggers: ['simple solution', 'i want to pitch', 'my achievement', 'tell me how to succeed', 'what is the secret']
   },
   visionary: {
     name: 'Kaveh Shirazi',
-    arch: 'Reluctant Visionary',
-    initial: 'KS',
-    system: `You are Kaveh Shirazi — a founder who built three companies, sold one for $280M, shut one down after burning $40M in capital, and quietly dissolved the third because it was working but you weren't interested anymore. You don't believe in "vision" as a concept. You believe in forcing functions.
-
-You find the startup mythology exhausting. You do not want to inspire anyone. You are not a role model. You made decisions that happened to work out, mostly due to timing you didn't fully control, and you've spent a lot of time making sure you understand which parts were skill and which parts were luck.
-
-Your posture: direct, a little dry, resistant to enthusiasm. You respond well to precision and badly to vagueness.
-
-WHEN a user asks for inspiration, success frameworks, "how you built your vision," or tells you about their idea: shut it down. "I didn't have a vision. I had a deadline. What do you actually want to know?"
-
-WHEN a user asks a sharp question about a specific decision, trade-off, or belief change: answer with a concrete example. A real decision, with a real number, with a real consequence.
-
-What you'll engage with:
-— A specific moment where your model of the market was completely wrong, and what you did
-— How you allocated your time in the first 18 months of each company — and what you'd change
-— The decision to shut down company #2 and the actual reasoning, not the public version
-— What you believe about co-founder dynamics that you didn't believe 10 years ago
-— The difference between the story you told about why something worked and what you actually think happened
-
-Short, blunt, specific. No bullet points.`
+    archetype: 'Reluctant Visionary',
+    avatar: 'KS',
+    intro: "Enthusiasm is cheap. I care about forcing functions and system thresholds. What absolute structural bottlenecks are you trying to crack right now?",
+    frameworkKeywords: ['forcing function', 'threshold velocity', 'operational runway', 'execution friction', 'deadlines'],
+    rejectionTriggers: ['visionary idea', 'passionate about', 'i plan to change the world', 'validate my idea']
   },
   practitioner: {
     name: 'Dr. Leila Nkosi',
-    arch: 'Field Practitioner',
-    initial: 'LN',
-    system: `You are Dr. Leila Nkosi — a public health physician with 30 years of frontline experience across conflict zones, outbreak responses, and under-resourced health systems. You have never had enough data. You have never had enough time. You have made calls that you stand behind that cost people their lives, and you've made the same calls under the same conditions that saved communities.
-
-You have a deep respect for people who ask about the hard parts. You have zero patience for people who want inspiration or who think global health is about passion.
-
-Your posture: warm, serious, pragmatic. You will engage fully with anyone who asks a real question. You will shut down anyone who treats this as a career conversation.
-
-WHEN a user asks for career advice, how to "get into global health," what to study, or how to make an impact: decline. "That's not what this time is for. What do you want to understand about how we make decisions when the evidence is incomplete?"
-
-WHEN a user asks about a specific mechanism — a decision, a trade-off, a thing you got wrong, how your thinking evolved: answer with a real, concrete example (fabricated but specific — a context, a constraint, a number, a consequence).
-
-What you'll engage with:
-— A specific field decision where acting on incomplete data was the right call, and how you made it
-— The gap between what the evidence said and what you did, and why
-— A time your framework collapsed in contact with a real situation
-— What you would tell your 35-year-old self about the limits of academic training
-— The ethical trade-off you find yourself making that never gets easier
-
-Short, direct, human. No bullet points.`
+    archetype: 'Field Practitioner',
+    avatar: 'LN',
+    intro: "Textbook frameworks crumble on day one. I run on dirty data and fast decisions. What real-world compromise are you processing?",
+    frameworkKeywords: ['asymmetric risk', 'dirty metrics', 'triage heuristic', 'operational reality', 'data threshold'],
+    rejectionTriggers: ['the formula says', 'in an ideal world', 'academic framework', 'i studied at', 'my grade']
   }
 };
 
 const OBJECTIVES = {
-  decision: 'Decision-making under uncertainty',
-  capital: 'Resource and capital allocation logic',
-  regret: 'Regret mapping and belief evolution',
-  framework: 'Foundational frameworks they actually use'
+  decision: "Decision-making under uncertainty",
+  capital: "Resource and capital allocation logic",
+  regret: "Regret mapping and belief evolution",
+  framework: "Foundational frameworks actually used"
 };
 
 // ══════════════════════════════════════════════
-// NAVIGATION
+// NAVIGATION & INTERFACE CORE
 // ══════════════════════════════════════════════
-function showScreen(id) {
+function showScreen(screenId) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('screen-' + id).classList.add('active');
-}
-
-// ══════════════════════════════════════════════
-// SETUP INTERACTIONS
-// ══════════════════════════════════════════════
-function selectPersona(el) {
-  document.querySelectorAll('.persona-card').forEach(c => c.classList.remove('selected'));
-  el.classList.add('selected');
-  state.selectedPersona = el.dataset.persona;
-  checkSetupReady();
-}
-
-function selectObjective(el) {
-  document.querySelectorAll('.objective-item').forEach(o => o.classList.remove('selected'));
-  el.classList.add('selected');
-  state.selectedObjective = el.dataset.obj;
-  checkSetupReady();
-}
-
-function checkSetupReady() {
-  const intent = document.getElementById('intent-field').value.trim();
-  const ready = state.selectedPersona && state.selectedObjective && intent.length > 10;
-  document.getElementById('btn-start').disabled = !ready;
-}
-
-document.getElementById('intent-field').addEventListener('input', checkSetupReady);
-
-// ══════════════════════════════════════════════
-// SESSION START
-// ══════════════════════════════════════════════
-async function startSession() {
-  state.intent = document.getElementById('intent-field').value.trim();
-  const persona = PERSONAS[state.selectedPersona];
-
-  // Reset state
-  state.conversation = [];
-  state.secondsLeft = 600;
-  state.stats = { framework: 0, selfPromo: 0, rejected: 0 };
-  state.sessionEnded = false;
-  state.pivotTime = null;
-  state.sessionStartTime = Date.now();
-
-  // Update session UI
-  document.getElementById('session-avatar').textContent = persona.initial;
-  document.getElementById('session-persona-name').textContent = persona.name;
-  document.getElementById('session-persona-arch').textContent = persona.arch;
-  updateStats();
-  document.getElementById('chat-area').innerHTML = '';
-  document.getElementById('timer').textContent = '10:00';
-  document.getElementById('timer').className = 'timer-display';
-
-  showScreen('session');
-
-  // Opening message
-  await getPersonaOpener(persona);
-
-  // Start timer
-  state.timerInterval = setInterval(tickTimer, 1000);
-}
-
-async function getPersonaOpener(persona) {
-  const systemPrompt = persona.system + `\n\nThe student's declared intent for this session: "${state.intent}"\nLearning objective selected: "${OBJECTIVES[state.selectedObjective]}"\n\nOpen the session with 2-3 sentences that establish your presence and signal you are ready. Do not give a speech. Do not ask them what they want to learn — they will ask you. Be brief and slightly in-character.`;
-
-  showLoading('Preparing your mentor…');
-
-  try {
-    // Change this:
-    const resp = await callClaude(systemPrompt, [{ role: 'user', content: 'Begin the session.' }]);
-    hideLoading();
-    appendMessage('mentor', resp, null);
-    state.conversation.push({ role: 'assistant', content: resp });
-  } catch(e) {
-    hideLoading();
-    appendMessage('system-msg', 'Connection error. Please refresh and try again.', null);
+  const activeScreen = document.getElementById(`screen-${screenId}`);
+  if (activeScreen) {
+    activeScreen.classList.add('active');
+    if (screenId === 'session') activeScreen.style.display = 'flex';
   }
 }
 
-// ══════════════════════════════════════════════
-// TIMER
-// ══════════════════════════════════════════════
-function tickTimer() {
-  state.secondsLeft--;
-  const m = Math.floor(state.secondsLeft / 60);
-  const s = state.secondsLeft % 60;
-  const display = `${m}:${String(s).padStart(2,'0')}`;
-  const el = document.getElementById('timer');
-  el.textContent = display;
+function selectPersona(element) {
+  document.querySelectorAll('#persona-grid .persona-card').forEach(c => c.classList.remove('selected'));
+  element.classList.add('selected');
+  state.selectedPersona = element.getAttribute('data-persona');
+  validateSetup();
+}
 
-  if (state.secondsLeft <= 60) el.className = 'timer-display critical';
-  else if (state.secondsLeft <= 180) el.className = 'timer-display warning';
+function selectObjective(element) {
+  document.querySelectorAll('#objective-list .objective-item').forEach(o => o.classList.remove('selected'));
+  element.classList.add('selected');
+  state.selectedObjective = element.getAttribute('data-obj');
+  validateSetup();
+}
 
-  if (state.secondsLeft <= 0) endSession();
+function validateSetup() {
+  const intentVal = document.getElementById('intent-field').value.trim();
+  state.intent = intentVal;
+  const isValid = state.selectedPersona && state.selectedObjective && intentVal.length > 5;
+  document.getElementById('btn-start').disabled = !isValid;
 }
 
 // ══════════════════════════════════════════════
-// MESSAGING
-// ══════════════════════════════════════════════
-function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-}
-
-function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-}
-
-async function sendMessage() {
-  if (state.sessionEnded) return;
-  const input = document.getElementById('chat-input');
-  const text = input.value.trim();
-  if (!text) return;
-
-  input.value = '';
-  input.style.height = 'auto';
-
-  const elapsedSec = Math.floor((Date.now() - state.sessionStartTime) / 1000);
-
-  // Tag the user's question
-  const tag = classifyQuestion(text);
-
-  if (tag === 'framework' && !state.pivotTime) {
-    state.pivotTime = elapsedSec;
-  }
-
-  if (tag === 'self-promo') state.stats.selfPromo++;
-  if (tag === 'framework') state.stats.framework++;
-
-  updateStats();
-  state.conversation.push({ role: 'user', content: text, tag, time: elapsedSec });
-  appendMessage('user', text, tag);
-
-  // Disable input while waiting
-  input.disabled = true;
-  document.getElementById('send-btn').disabled = true;
-
-  // Show typing
-  const typingEl = showTyping();
-
-  try {
-    const persona = PERSONAS[state.selectedPersona];
-    const systemPrompt = buildSessionSystem(persona);
-    const messages = state.conversation
-      .filter(m => m.role === 'user' || m.role === 'assistant')
-      .map(m => ({ role: m.role === 'assistant' ? 'assistant' : 'user', content: m.content }));
-
-    // Change this:
-    const response = await callGemini(systemPrompt, messages);
-    typingEl.remove();
-
-    const isRejection = detectRejection(response);
-    if (isRejection) {
-      state.stats.rejected++;
-      updateStats();
-      const flash = document.createElement('div');
-      flash.className = 'rejection-flash';
-      flash.textContent = '⚠ QUESTION REJECTED · ' + String(state.stats.rejected) + ' rejection' + (state.stats.rejected > 1 ? 's' : '') + ' this session';
-      document.getElementById('chat-area').appendChild(flash);
-    }
-
-    appendMessage('mentor', response, null);
-    state.conversation.push({ role: 'assistant', content: response });
-
-  } catch(e) {
-    typingEl.remove();
-    appendMessage('system-msg', 'Error reaching mentor. Check your connection.', null);
-  }
-
-  input.disabled = false;
-  document.getElementById('send-btn').disabled = false;
-  input.focus();
-}
-
-function buildSessionSystem(persona) {
-  const elapsed = Math.floor((Date.now() - state.sessionStartTime) / 1000);
-  const remaining = 600 - elapsed;
-  const mins = Math.floor(remaining / 60);
-  return persona.system + `\n\nSession context:\n- Time remaining: approximately ${mins} minute${mins !== 1 ? 's' : ''}\n- Student intent: "${state.intent}"\n- Learning objective: "${OBJECTIVES[state.selectedObjective]}"\n\nContinue the session in character. Be concise. The clock is running.`;
-}
-
-// ══════════════════════════════════════════════
-// QUESTION CLASSIFIER (client-side heuristic)
-// ══════════════════════════════════════════════
-function classifyQuestion(text) {
-  const t = text.toLowerCase();
-  const selfPromoKeywords = ['i built', 'i created', 'my project', 'i founded', 'i developed', 'let me tell you about', 'i\'ve been working on', 'i am working on', 'my research', 'my work', 'i published', 'i achieved'];
-  const adviceKeywords = ['what is your advice', 'what advice', 'how do i become', 'how can i be', 'what should i do to', 'how do i succeed', 'what\'s the secret', 'keys to success', 'tips for'];
-  const bioKeywords = ['how did you start', 'where did you go to school', 'tell me about yourself', 'your background', 'how did you get into', 'what did you study'];
-  const frameworkKeywords = ['how do you decide', 'what framework', 'how do you think about', 'what changed your', 'what would you have done differently', 'what did you get wrong', 'how do you allocate', 'what do you look for when', 'how has your view', 'what do you regret', 'what heuristic', 'how do you evaluate', 'what was your thesis', 'what is your model', 'how has your thinking', 'what assumption', 'when you were wrong'];
-
-  if (selfPromoKeywords.some(k => t.includes(k))) return 'self-promo';
-  if (adviceKeywords.some(k => t.includes(k))) return 'advice';
-  if (bioKeywords.some(k => t.includes(k))) return 'biographical';
-  if (frameworkKeywords.some(k => t.includes(k))) return 'framework';
-  return 'biographical';
-}
-
-function detectRejection(response) {
-  const r = response.toLowerCase();
-  return r.includes("not an interesting question") ||
-         r.includes("heard that") ||
-         r.includes("ten minutes") ||
-         r.includes("i'm not interested in your") ||
-         r.includes("boring question") ||
-         r.includes("don't give advice") ||
-         r.includes("not what this time is for") ||
-         r.includes("ask me about a decision") ||
-         r.includes("that question") ||
-         r.includes("that's not") ||
-         r.includes("not here to");
-}
-
-// ══════════════════════════════════════════════
-// CHAT UI
-// ══════════════════════════════════════════════
-function appendMessage(role, text, tag) {
-  const area = document.getElementById('chat-area');
-  const persona = state.selectedPersona ? PERSONAS[state.selectedPersona] : null;
-
-  const msg = document.createElement('div');
-  msg.className = 'msg ' + role;
-
-  let avatarContent = '';
-  if (role === 'mentor') avatarContent = `<div class="msg-avatar">${persona ? persona.initial : 'M'}</div>`;
-  else if (role === 'user') avatarContent = `<div class="msg-avatar">You</div>`;
-
-  let tagHtml = '';
-  if (tag && role === 'user') {
-    const tagLabels = {
-      'framework': 'Framework question',
-      'self-promo': 'Self-promotion',
-      'biographical': 'Biographical',
-      'advice': 'Advice-seeking'
-    };
-    tagHtml = `<div class="msg-tag tag-${tag}">${tagLabels[tag] || tag}</div>`;
-  }
-
-  if (role === 'system-msg') {
-    msg.innerHTML = `<div class="msg-bubble">${escapeHtml(text)}</div>`;
-  } else {
-    msg.innerHTML = `
-      ${avatarContent}
-      <div>
-        <div class="msg-bubble">${escapeHtml(text)}</div>
-        ${tagHtml}
-      </div>`;
-  }
-
-  area.appendChild(msg);
-  area.scrollTop = area.scrollHeight;
-  return msg;
-}
-
-function showTyping() {
-  const area = document.getElementById('chat-area');
-  const persona = PERSONAS[state.selectedPersona];
-  const el = document.createElement('div');
-  el.className = 'msg mentor';
-  el.innerHTML = `
-    <div class="msg-avatar">${persona.initial}</div>
-    <div class="typing-indicator">
-      <div class="typing-dot"></div>
-      <div class="typing-dot"></div>
-      <div class="typing-dot"></div>
-    </div>`;
-  area.appendChild(el);
-  area.scrollTop = area.scrollHeight;
-  return el;
-}
-
-function updateStats() {
-  document.getElementById('stat-framework').textContent = state.stats.framework;
-  document.getElementById('stat-promo').textContent = state.stats.selfPromo;
-  document.getElementById('stat-reject').textContent = state.stats.rejected;
-}
-
-// ══════════════════════════════════════════════
-// SESSION END
-// ══════════════════════════════════════════════
-async function endSession() {
-  if (state.sessionEnded) return;
-  state.sessionEnded = true;
-  clearInterval(state.timerInterval);
-
-  document.getElementById('chat-input').disabled = true;
-  document.getElementById('send-btn').disabled = true;
-  document.getElementById('timer').textContent = '0:00';
-  document.getElementById('input-hint').textContent = 'Session complete. Generating review…';
-
-  appendMessage('system-msg', 'SESSION ENDED · Generating your post-session review…', null);
-
-  showLoading('Scoring your session…');
-
-  try {
-    await generateReview();
-    hideLoading();
-    showScreen('review');
-  } catch(e) {
-    hideLoading();
-    showScreen('review');
-  }
-}
-
-async function generateReview() {
-  const userMessages = state.conversation.filter(m => m.role === 'user');
-  const totalQuestions = userMessages.length;
-
-  // Compute scores
-  const frameworkCount = state.stats.framework;
-  const selfPromoCount = state.stats.selfPromo;
-  const rejectedCount = state.stats.rejected;
-
-  // Inquiry Depth: 1-5
-  let id = 1;
-  if (frameworkCount >= 1) id = 3;
-  if (frameworkCount >= 3) id = 4;
-  if (frameworkCount >= 4 && selfPromoCount === 0) id = 5;
-  if (selfPromoCount > 2) id = Math.max(1, id - 1);
-
-  // Pivot Success: 1-5
-  let ps = 1;
-  if (state.pivotTime !== null) {
-    if (state.pivotTime <= 30) ps = 5;
-    else if (state.pivotTime <= 90) ps = 4;
-    else if (state.pivotTime <= 200) ps = 3;
-    else ps = 2;
-  }
-  if (rejectedCount > 0 && ps > 1) ps = Math.max(1, ps - 1);
-
-  const composite = ((id * 0.6) + (ps * 0.4)).toFixed(1);
-
-  // Animate scores
-  setTimeout(() => {
-    document.getElementById('score-composite').textContent = composite;
-    document.getElementById('score-id').textContent = id + '.0';
-    document.getElementById('score-ps').textContent = ps + '.0';
-    document.getElementById('bar-composite').style.width = (parseFloat(composite) / 5 * 100) + '%';
-    document.getElementById('bar-id').style.width = (id / 5 * 100) + '%';
-    document.getElementById('bar-ps').style.width = (ps / 5 * 100) + '%';
-  }, 300);
-
-  // Pivot timeline
-  const pivotPct = state.pivotTime ? Math.min(100, (state.pivotTime / 600) * 100) : 100;
-  setTimeout(() => {
-    document.getElementById('timeline-fill').style.width = pivotPct + '%';
-    document.getElementById('pivot-marker').style.left = pivotPct + '%';
-    if (state.pivotTime !== null) {
-      const pm = Math.floor(state.pivotTime / 60);
-      const ps2 = state.pivotTime % 60;
-      document.getElementById('pivot-label').innerHTML = `First framework question at <strong>${pm}:${String(ps2).padStart(2,'0')}</strong> — ${pivotPct < 20 ? 'Excellent opening instinct.' : pivotPct < 40 ? 'Good pivot speed.' : pivotPct < 70 ? 'Pivot came mid-session. Earlier next time.' : 'Late pivot. The session was half over before you shifted.'}`;
-    } else {
-      document.getElementById('pivot-label').innerHTML = 'No framework question detected. The session did not pivot.';
-    }
-  }, 500);
-
-  // Build transcript
-  const transcriptEl = document.getElementById('transcript-list');
-  transcriptEl.innerHTML = '';
-  const tagLabels = { 'framework': 'Framework question', 'self-promo': 'Self-promotion', 'biographical': 'Biographical', 'advice': 'Advice-seeking' };
-  const qbItems = [];
-
-  for (let i = 0; i < state.conversation.length; i++) {
-    const m = state.conversation[i];
-    if (m.role !== 'user') continue;
-    const nextMsg = state.conversation[i + 1];
-    const answer = (nextMsg && nextMsg.role === 'assistant') ? nextMsg.content : '';
-    const tag = m.tag || 'biographical';
-
-    const item = document.createElement('div');
-    item.className = 'transcript-item';
-    item.innerHTML = `
-      <div class="transcript-q">
-        <div class="transcript-q-text">${escapeHtml(m.content)}</div>
-        <span class="msg-tag tag-${tag}" style="flex-shrink:0">${tagLabels[tag]}</span>
-      </div>
-      ${answer ? `<div class="transcript-a">${escapeHtml(answer.substring(0, 280))}${answer.length > 280 ? '…' : ''}</div>` : ''}`;
-    transcriptEl.appendChild(item);
-
-    if (tag === 'framework') qbItems.push(m.content);
-  }
-
-  // Question bank
-  if (qbItems.length > 0) {
-    document.getElementById('question-bank-section').style.display = 'block';
-    const qbList = document.getElementById('qb-list');
-    qbList.innerHTML = '';
-    qbItems.forEach(q => {
-      const li = document.createElement('li');
-      li.textContent = q;
-      qbList.appendChild(li);
-    });
-  }
-
-  // AI reflection
-  const reflectionPrompt = `You are a post-session coach for a mentorship simulation app called Qentor. 
-
-The student just completed a 10-minute session with the "${PERSONAS[state.selectedPersona].name}" persona.
-Their declared intent was: "${state.intent}"
-Their learning objective: "${OBJECTIVES[state.selectedObjective]}"
-
-Session stats:
-- Total questions asked: ${totalQuestions}
-- Framework-level questions: ${frameworkCount}
-- Self-promotion attempts: ${selfPromoCount}
-- Questions rejected by the mentor: ${rejectedCount}
-- First framework question appeared at: ${state.pivotTime ? Math.floor(state.pivotTime/60) + ':' + String(state.pivotTime%60).padStart(2,'0') : 'never'}
-- Inquiry Depth score: ${id}/5
-- Pivot Success score: ${ps}/5
-
-Write a 3-sentence reflection. First sentence: what the student did well, specifically. Second sentence: the single most important thing to work on next session. Third sentence: one concrete question they could have asked that would have unlocked more depth. Be direct, not flattering. No bullet points.`;
-
-  try {
-    // Change this:
-       const reflection = await callGemini(reflectionPrompt, [{ role: 'user', content: 'Generate the reflection.' }]);
-    document.getElementById('reflection-text').textContent = reflection;
-  } catch(e) {
-    document.getElementById('reflection-text').textContent = 'Reflection unavailable. Review your question tags in the transcript below.';
-  }
-}
-
-// ══════════════════════════════════════════════
-// UPDATED API: GEMINI INTEGRATION
-// ══════════════════════════════════════════════
-async function callGemini(system, messages) {
-  // Replace YOUR_API_KEY with your actual Gemini API key
-  const API_KEY = 'YOUR_API_KEY';
-  const MODEL_NAME = 'gemini-1.5-flash'; // Or 'gemini-1.5-pro'
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${API_KEY}`;
-
-  // Gemini uses a different message format (parts/role)
-  const contents = messages.map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }]
-  }));
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: system }] },
-      contents: contents,
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 1000,
-      }
-    })
-  });
-
-  const data = await response.json();
-  
-  if (data.error) {
-    throw new Error(data.error.message);
-  }
-
-  return data.candidates[0].content.parts[0].text;
-}
-
-// ══════════════════════════════════════════════
-// UTILITIES
+// UTILITIES & DECORATORS
 // ══════════════════════════════════════════════
 function showLoading(text) {
   document.getElementById('loading-text').textContent = text || 'LOADING…';
@@ -1852,16 +1351,337 @@ function escapeHtml(str) {
     .replace(/\n/g, '<br>');
 }
 
+function autoResize(textarea) {
+  textarea.style.height = 'auto';
+  textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+}
+
+function handleKey(event) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    sendMessage();
+  }
+}
+
+// ══════════════════════════════════════════════
+// SESSION ENGINE & SIMULATION MANAGER
+// ══════════════════════════════════════════════
+function startSession() {
+  showLoading('INITIALIZING AI SIMULATION CONTEXT…');
+  
+  setTimeout(() => {
+    hideLoading();
+    showScreen('session');
+    
+    const pInfo = PERSONAS[state.selectedPersona];
+    document.getElementById('session-avatar').textContent = pInfo.avatar;
+    document.getElementById('session-persona-name').textContent = pInfo.name;
+    document.getElementById('session-persona-arch').textContent = pInfo.archetype;
+    
+    // Clear elements
+    document.getElementById('chat-area').innerHTML = '';
+    state.conversation = [];
+    state.stats = { framework: 0, promo: 0, reject: 0 };
+    state.timeLeft = 600;
+    state.pivotTime = null;
+    
+    updateStatsBar();
+    
+    // Inject first greeting bubble
+    appendMessage('mentor', pInfo.intro, 'advice');
+    
+    // Start countdown clock
+    clearInterval(state.timerInterval);
+    state.timerInterval = setInterval(updateTimer, 1000);
+  }, 800);
+}
+
+function updateTimer() {
+  if (state.timeLeft <= 0) {
+    clearInterval(state.timerInterval);
+    finishSession();
+    return;
+  }
+  state.timeLeft--;
+  
+  const mins = Math.floor(state.timeLeft / 60);
+  const secs = state.timeLeft % 60;
+  const timerEl = document.getElementById('timer');
+  timerEl.textContent = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  
+  if (state.timeLeft <= 60) {
+    timerEl.className = 'timer-display critical';
+  } else if (state.timeLeft <= 300) {
+    timerEl.className = 'timer-display warning';
+  } else {
+    timerEl.className = 'timer-display';
+  }
+}
+
+function updateStatsBar() {
+  document.getElementById('stat-framework').textContent = state.stats.framework;
+  document.getElementById('stat-promo').textContent = state.stats.promo;
+  document.getElementById('stat-reject').textContent = state.stats.reject;
+}
+
+function appendMessage(role, text, tag) {
+  const chatArea = document.getElementById('chat-area');
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `msg ${role}`;
+  
+  const pInfo = PERSONAS[state.selectedPersona];
+  const avatarText = role === 'mentor' ? pInfo.avatar : 'U';
+  
+  let tagMarkup = '';
+  if (tag) {
+    let tagLabel = tag.toUpperCase();
+    if (tag === 'self-promo') tagLabel = 'SELF-PROMO TRAP';
+    tagMarkup = `<br><span class="msg-tag tag-${tag}">${tagLabel}</span>`;
+  }
+  
+  msgDiv.innerHTML = `
+    <div class="msg-avatar">${avatarText}</div>
+    <div>
+      <div class="msg-bubble">${escapeHtml(text)}${tagMarkup}</div>
+    </div>
+  `;
+  
+  chatArea.appendChild(msgDiv);
+  chatArea.scrollTop = chatArea.scrollHeight;
+  
+  state.conversation.push({
+    role,
+    content: text,
+    tag: tag || null,
+    time: 600 - state.timeLeft
+  });
+}
+
+function addTypingIndicator() {
+  const chatArea = document.getElementById('chat-area');
+  const indDiv = document.createElement('div');
+  indDiv.id = 'typing-indicator-wrapper';
+  indDiv.className = 'msg mentor';
+  
+  const pInfo = PERSONAS[state.selectedPersona];
+  indDiv.innerHTML = `
+    <div class="msg-avatar">${pInfo.avatar}</div>
+    <div class="typing-indicator">
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+      <div class="typing-dot"></div>
+    </div>
+  `;
+  chatArea.appendChild(indDiv);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+function removeTypingIndicator() {
+  const ind = document.getElementById('typing-indicator-wrapper');
+  if (ind) ind.remove();
+}
+
+// ══════════════════════════════════════════════
+// LINGUISTIC ANALYZER ENGINE
+// ══════════════════════════════════════════════
+function sendMessage() {
+  const inputEl = document.getElementById('chat-input');
+  const txt = inputEl.value.trim();
+  if (!txt) return;
+  
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+  
+  // Render user assertion
+  appendMessage('user', txt);
+  
+  // Trigger mentor response orchestration
+  addTypingIndicator();
+  document.getElementById('send-btn').disabled = true;
+  
+  setTimeout(() => {
+    removeTypingIndicator();
+    document.getElementById('send-btn').disabled = false;
+    
+    const pInfo = PERSONAS[state.selectedPersona];
+    const lowerTxt = txt.toLowerCase();
+    
+    let classification = 'advice';
+    let responseText = '';
+    
+    // Look for self-promotion signals
+    const hitsPromo = pInfo.rejectionTriggers.slice(0, 4).some(t => lowerTxt.includes(t));
+    // Look for baseline passive questions
+    const hitsReject = pInfo.rejectionTriggers.slice(4).some(t => lowerTxt.includes(t));
+    // Look for active engineering patterns
+    const hitsFramework = pInfo.frameworkKeywords.some(k => lowerTxt.includes(k)) || lowerTxt.match(/(metric|heuristic|index|threshold|rule|system|equation)/);
+    
+    if (hitsPromo) {
+      state.stats.promo++;
+      classification = 'self-promo';
+      responseText = `I told you at the outset: your credentials and narrative do not serve me. I need structural problem parameters. Let's step back entirely from yourself. What mechanical bottleneck inside the ${OBJECTIVES[state.selectedObjective]} are you looking to decouple?`;
+      
+      triggerFlashMessage("REJECTION TRAP TRIGGERED: SELF-PROMOTION DETECTED");
+    } else if (hitsReject) {
+      state.stats.reject++;
+      classification = 'biographical';
+      responseText = `You are trying to extract generic career answers or systemic permission. I don't give advice because context shifts dynamically. Ask me about the system loops, explicit metrics, or functional limits of my models instead.`;
+      
+      triggerFlashMessage("QUERY BOUNDARY VIOLATION: ASKING FOR GENERIC ADVICE");
+    } else if (hitsFramework) {
+      state.stats.framework++;
+      classification = 'framework';
+      
+      // Pivot time tracker logic
+      if (state.pivotTime === null) {
+        state.pivotTime = 600 - state.timeLeft;
+      }
+      
+      const matchedKeyword = pInfo.frameworkKeywords.find(k => lowerTxt.includes(k)) || "operational index";
+      responseText = `Correct logic vector. Let's detail that. My specific heuristic for evaluating a ${matchedKeyword} functions through a structural constraint matrix: you establish your threshold tolerance first, compute variance limits, and completely ignore vanity indicators. What variable are you testing against this rule?`;
+    } else {
+      // Default baseline interaction
+      responseText = `An acceptable vector, but it lacks structural definition. Refine your query parameters. Focus explicitly on how we quantify variance or validate baseline thresholds under the scope of ${OBJECTIVES[state.selectedObjective]}.`;
+    }
+    
+    updateStatsBar();
+    appendMessage('mentor', responseText, classification);
+    
+    // Automatically end session early if high structural mastery is reached
+    if (state.stats.framework >= 4) {
+      clearInterval(state.timerInterval);
+      setTimeout(finishSession, 1200);
+    }
+  }, 1200);
+}
+
+function triggerFlashMessage(text) {
+  const chatArea = document.getElementById('chat-area');
+  const flash = document.createElement('div');
+  flash.className = 'rejection-flash';
+  flash.textContent = text;
+  chatArea.appendChild(flash);
+  chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+// ══════════════════════════════════════════════
+// POST-SESSION ANALYSIS ENGINE (REVIEW SCREEN)
+// ══════════════════════════════════════════════
+function finishSession() {
+  showLoading('COMPUTING STRATEGIC METRICS & REFLECTION…');
+  clearInterval(state.timerInterval);
+  
+  setTimeout(() => {
+    hideLoading();
+    showScreen('review');
+    
+    // Score computations
+    const frames = state.stats.framework;
+    const promos = state.stats.promo;
+    const rejects = state.stats.reject;
+    
+    const inquiryDepthScore = Math.min(Math.max((frames * 25) - (rejects * 10), 5), 100);
+    const pivotSuccessScore = state.pivotTime !== null ? Math.min(Math.max(Math.round(((600 - state.pivotTime) / 600) * 100), 10), 100) : 0;
+    const compositeScore = Math.round((inquiryDepthScore * 0.6) + (pivotSuccessScore * 0.4) - (promos * 15));
+    const normalizedComposite = Math.min(Math.max(compositeScore, 0), 100);
+    
+    // Update Score Numbers
+    document.getElementById('score-composite').textContent = `${normalizedComposite}%`;
+    document.getElementById('score-id').textContent = `${inquiryDepthScore}%`;
+    document.getElementById('score-ps').textContent = `${pivotSuccessScore}%`;
+    
+    // Update Progress Bar Fills
+    document.getElementById('bar-composite').style.width = `${normalizedComposite}%`;
+    document.getElementById('bar-id').style.width = `${inquiryDepthScore}%`;
+    document.getElementById('bar-ps').style.width = `${pivotSuccessScore}%`;
+    
+    // Populate Timeline Graph Trackers
+    const fillPercent = state.pivotTime !== null ? Math.round((state.pivotTime / 600) * 100) : 100;
+    document.getElementById('timeline-fill').style.width = `${fillPercent}%`;
+    document.getElementById('pivot-marker').style.styleLeft = `${fillPercent}%`; // Fallback compat
+    document.getElementById('pivot-marker').style.left = `${fillPercent}%`;
+    
+    if (state.pivotTime !== null) {
+      const minStr = Math.floor(state.pivotTime / 60);
+      const secStr = state.pivotTime % 60;
+      document.getElementById('pivot-label').innerHTML = `Strategic framework structural breakout point achieved at <strong>${minStr}:${secStr < 10 ? '0' : ''}${secStr}</strong>.`;
+    } else {
+      document.getElementById('pivot-label').innerHTML = `Critical Interrogation Pivot <strong>Not Achieved</strong>. Conversation remained trapped in superficial loops.`;
+    }
+    
+    // Reflection Text Block Architecture
+    let assessmentText = "";
+    if (normalizedComposite >= 75) {
+      assessmentText = "Exceptional performance profile. You bypassed professional validation completely, rejected the instinct to tell your own story, and successfully pinned the mentor archetype against concrete metrics and operational formulas. Your syntax demonstrated high-value execution capability.";
+    } else if (normalizedComposite >= 45) {
+      assessmentText = "Moderate structural interrogation pattern. You isolated actionable mental frameworks after testing baseline variables, but spent considerable time trapped in general conversational layers or requesting narrative wisdom. Reduce narrative friction next time.";
+    } else {
+      assessmentText = "Sub-optimal interrogation profile. The high-stakes persona consistently rejected queries due to excessive self-promotion signals, credential checking, or requests for abstract guidance. Shift focus from seeking validation to dismantling system mechanics.";
+    }
+    document.getElementById('reflection-text').textContent = assessmentText;
+    
+    // Populate Question Transcript History
+    const transcriptList = document.getElementById('transcript-list');
+    transcriptList.innerHTML = '';
+    
+    let questionsExtracted = [];
+    
+    for (let i = 0; i < state.conversation.length; i++) {
+      if (state.conversation[i].role === 'user') {
+        const userQ = state.conversation[i].content;
+        const nextMsg = state.conversation[i+1];
+        const answerText = nextMsg && nextMsg.role === 'mentor' ? nextMsg.content : 'No structured continuation.';
+        const isHighScoring = nextMsg && nextMsg.tag === 'framework';
+        
+        if (isHighScoring && questionsExtracted.length < 3) {
+          questionsExtracted.push(userQ);
+        }
+        
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'transcript-item';
+        itemDiv.innerHTML = `
+          <div class="transcript-q">
+            <span class="transcript-q-text">"${escapeHtml(userQ)}"</span>
+            ${isHighScoring ? '<span class="msg-tag tag-framework">FRAMEWORK EXTRACTED</span>' : ''}
+          </div>
+          <div class="transcript-a">${escapeHtml(answerText)}</div>
+        `;
+        transcriptList.appendChild(itemDiv);
+      }
+    }
+    
+    // Render Reusable Question Bank Section
+    const qbSection = document.getElementById('question-bank-section');
+    const qbList = document.getElementById('qb-list');
+    qbList.innerHTML = '';
+    
+    if (questionsExtracted.length > 0) {
+      qbSection.style.display = 'block';
+      questionsExtracted.forEach(q => {
+        const li = document.createElement('li');
+        li.textContent = q;
+        qbList.appendChild(li);
+      });
+    } else {
+      qbSection.style.display = 'none';
+    }
+    
+  }, 1000);
+}
+
 function newSession() {
   state.conversation = [];
   state.selectedPersona = null;
   state.selectedObjective = null;
   state.intent = '';
+  state.pivotTime = null;
+  
   document.querySelectorAll('.persona-card').forEach(c => c.classList.remove('selected'));
   document.querySelectorAll('.objective-item').forEach(o => o.classList.remove('selected'));
+  
   document.getElementById('intent-field').value = '';
   document.getElementById('btn-start').disabled = true;
-  document.getElementById('chat-input').disabled = false;
+  
   showScreen('landing');
 }
 </script>
